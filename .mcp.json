@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "code-analysis": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "c:\\stuff\\git\\CodeAnalysisMCP\\src\\CodeAnalysis.Mcp\\CodeAnalysis.Mcp.csproj"
+      ]
+    }
+  }
+}

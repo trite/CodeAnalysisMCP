@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+  publish-standalone:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [win-x64, linux-x64, osx-x64, osx-arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish standalone executable
+        run: |
+          dotnet publish src/CodeAnalysis.Mcp/CodeAnalysis.Mcp.csproj \
+            -c Release \
+            -r ${{ matrix.runtime }} \
+            --self-contained \
+            -o ./publish/${{ matrix.runtime }}
+
+      - name: Create archive (Windows)
+        if: startsWith(matrix.runtime, 'win')
+        run: |
+          cd publish/${{ matrix.runtime }}
+          zip -r ../../CodeAnalysis.Mcp-${{ matrix.runtime }}.zip .
+
+      - name: Create archive (Unix)
+        if: "!startsWith(matrix.runtime, 'win')"
+        run: |
+          cd publish/${{ matrix.runtime }}
+          tar -czvf ../../CodeAnalysis.Mcp-${{ matrix.runtime }}.tar.gz .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodeAnalysis.Mcp-${{ matrix.runtime }}
+          path: CodeAnalysis.Mcp-${{ matrix.runtime }}.*
+
+  publish-nuget:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Pack NuGet tool
+        run: |
+          dotnet pack src/CodeAnalysis.Mcp/CodeAnalysis.Mcp.csproj \
+            -c Release \
+            -p:Version=${{ steps.version.outputs.VERSION }}
+
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: src/CodeAnalysis.Mcp/nupkg/*.nupkg
+
+      - name: Push to NuGet
+        if: github.event_name == 'push'
+        run: |
+          dotnet nuget push src/CodeAnalysis.Mcp/nupkg/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+        continue-on-error: true
+
+  create-release:
+    needs: [publish-standalone, publish-nuget]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/CodeAnalysis.Mcp-*/*
+            artifacts/nuget-package/*.nupkg
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
