@@ -9,12 +9,12 @@
     <!-- NuGet Package Info -->
     <PackageId>CodeAnalysis.Mcp</PackageId>
     <Version>0.1.0</Version>
-    <Authors>Your Name</Authors>
+    <Authors>Paul Brunner</Authors>
     <Description>MCP server for analyzing .NET codebases to find unreferenced code using Roslyn</Description>
     <PackageTags>mcp;roslyn;code-analysis;dotnet;unreferenced-code</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/yourusername/CodeAnalysisMCP</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/yourusername/CodeAnalysisMCP</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/trite/CodeAnalysisMCP</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/trite/CodeAnalysisMCP</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 
     <!-- .NET Tool Configuration -->
